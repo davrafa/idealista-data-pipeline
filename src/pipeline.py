@@ -1,7 +1,7 @@
+import os
 import re
 import csv
 from datetime import datetime
-from curl_cffi import requests
 from bs4 import BeautifulSoup
 import psycopg2
 
@@ -17,57 +17,94 @@ DB_CONFIG = {
 def get_db_connection():
     return psycopg2.connect(**DB_CONFIG)
 
-def fetch_page(url: str) -> str:
-    """Faz a requisição simulando um navegador Chrome real."""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept-Language": "pt-PT,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-    }
-    response = requests.get(url, headers=headers, impersonate="chrome120", timeout=15)
-    if response.status_code == 200:
-        return response.text
-    print(f"Erro no pedido: Código {response.status_code}")
+def get_html_content(filepath: str = "pagina.html") -> str:
+    """Lê o HTML local guardado pelo navegador."""
+    paths_to_check = [
+        filepath,
+        os.path.join("..", filepath),
+        os.path.join(os.path.dirname(__file__), "..", filepath)
+    ]
+    for path in paths_to_check:
+        if os.path.exists(path):
+            print(f"A carregar dados locais de {path}...")
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+    
+    print(f"Ficheiro {filepath} não encontrado.")
     return ""
 
 def parse_listings(html: str):
-    """Extrai os dados do HTML e formata segundo o schema REAL-ESTATE-BASIC."""
+    """Extrai os 30 anúncios formatados no schema REAL-ESTATE-BASIC."""
     soup = BeautifulSoup(html, "html.parser")
-    articles = soup.find_all("article", class_="item")
+    articles = soup.find_all("article")
     parsed_items = []
 
-    for art in articles:
+    print(f"A analisar {len(articles)} blocos de anúncios encontrados...")
+
+    for idx, art in enumerate(articles, start=1):
+        # 1. Obter Link e ID da propriedade
+        link_el = None
         prop_id = art.get("data-adid")
+
+        # Procura link que aponte para o imóvel (/imovel/...)
+        for a in art.find_all("a", href=True):
+            href = a["href"]
+            match_id = re.search(r"/imovel/(\d+)", href)
+            if match_id:
+                prop_id = match_id.group(1)
+                link_el = a
+                break
+
+        # Fallback de ID se não estiver explícito no href
         if not prop_id:
-            continue
+            prop_id = f"remax_temp_{idx}"
 
-        title_el = art.find("a", class_="item-link")
-        title = title_el.text.strip() if title_el else "Sem título"
-        url = "https://www.idealista.pt" + title_el["href"] if title_el and "href" in title_el.attrs else ""
+        # 2. Título e URL
+        title = "Imóvel Remax"
+        url = "https://www.idealista.pt"
+        if link_el:
+            raw_title = link_el.get_text(strip=True)
+            if raw_title:
+                title = raw_title
+            href = link_el.get("href", "")
+            url = f"https://www.idealista.pt{href}" if href.startswith("/") else href
+        else:
+            first_a = art.find("a", href=True)
+            if first_a:
+                url = first_a["href"]
+                title = first_a.get_text(strip=True) or title
 
-        price_el = art.find("span", class_="item-price")
+        # 3. Preço
         price_val = 0.0
-        if price_el:
-            clean_price = re.sub(r"[^\d]", "", price_el.text)
-            price_val = float(clean_price) if clean_price else 0.0
+        # Procura por padrões monetários no texto do artigo (ex: 975.000 €)
+        price_match = re.search(r"([\d\.]+)\s*€", art.get_text())
+        if price_match:
+            clean_price = price_match.group(1).replace(".", "").strip()
+            if clean_price.isdigit():
+                price_val = float(clean_price)
 
-        details = [span.text.strip() for span in art.find_all("span", class_="item-detail")]
+        # 4. Tipologia e Área
+        art_text = art.get_text(separator=" ")
+        
+        # Tipologia (T0, T1, T2, T3, etc.)
         typology = None
+        typo_match = re.search(r"\b(T\d+)\b", art_text, re.IGNORECASE)
+        if typo_match:
+            typology = typo_match.group(1).upper()
+
+        # Área (ex: 139 m²)
         area_m2 = None
+        area_match = re.search(r"(\d+)\s*m²", art_text)
+        if area_match:
+            area_m2 = int(area_match.group(1))
 
-        for d in details:
-            if re.match(r"^T\d+", d, re.IGNORECASE):
-                typology = d.upper()
-            elif "m²" in d:
-                match_area = re.search(r"(\d+)", d)
-                if match_area:
-                    area_m2 = int(match_area.group(1))
-
+        # 5. Localização
         location = "Portugal"
         if " em " in title:
             location = title.split(" em ")[-1].strip()
 
         parsed_items.append({
-            "property_id": prop_id,
+            "property_id": str(prop_id),
             "title": title,
             "price": price_val,
             "currency": "EUR",
@@ -100,10 +137,10 @@ def save_to_postgres(items):
     conn.commit()
     cur.close()
     conn.close()
-    print(f"Sucesso: {len(items)} registos inseridos/atualizados na base de dados.")
+    print(f"Sucesso: {len(items)} registos persistidos no PostgreSQL.")
 
 def export_to_csv(output_file="idealista_real_estate_basic.csv"):
-    """Exporta diretamente da base de dados para o CSV exigido pelo Data Boutique."""
+    """Exporta diretamente da view SQL para o CSV oficial exigido pelo marketplace."""
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("SELECT * FROM real_estate.v_real_estate_basic;")
@@ -118,13 +155,11 @@ def export_to_csv(output_file="idealista_real_estate_basic.csv"):
 
     cur.close()
     conn.close()
-    print(f"Ficheiro {output_file} gerado com sucesso!")
+    print(f"Ficheiro '{output_file}' gerado com sucesso!")
 
 if __name__ == "__main__":
-    # Exemplo de recolha de páginas de listagem
-    target_url = "https://www.idealista.pt/comprar-casas/lisboa/"
-    print("A iniciar pipeline...")
-    html_data = fetch_page(target_url)
+    print("A iniciar pipeline local...")
+    html_data = get_html_content("pagina.html")
     
     if html_data:
         data = parse_listings(html_data)
@@ -132,4 +167,4 @@ if __name__ == "__main__":
             save_to_postgres(data)
             export_to_csv()
         else:
-            print("Nenhum registo extraído. Verifica os seletores HTML.")
+            print("Nenhum dado pôde ser extraído.")

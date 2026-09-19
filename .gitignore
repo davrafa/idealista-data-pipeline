@@ -1,0 +1,14 @@
+# Ambiente virtual
+venv/
+.venv/
+
+# Ficheiros locais temporários e dados brutos
+pagina.html
+*.csv
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Docker e base de dados local
+postgres_data/
