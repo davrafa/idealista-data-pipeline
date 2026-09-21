@@ -12,3 +12,6 @@ __pycache__/
 
 # Docker e base de dados local
 postgres_data/
+
+# Credenciais e Segredos
+.env
