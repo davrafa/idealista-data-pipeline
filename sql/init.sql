@@ -1,42 +1,40 @@
--- Criar esquema de trabalho
 CREATE SCHEMA IF NOT EXISTS real_estate;
 
--- 1. Tabela Raw / Staging
-CREATE TABLE IF NOT EXISTS real_estate.staging_idealista (
-    id SERIAL PRIMARY KEY,
-    raw_property_id VARCHAR(50),
-    raw_title TEXT,
-    raw_price VARCHAR(50),
-    raw_typology VARCHAR(50),
-    raw_area VARCHAR(50),
-    raw_location TEXT,
-    raw_url TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+DROP TABLE IF EXISTS real_estate.listings_export CASCADE;
 
--- 2. Tabela Analítica (Schema Oficial REAL-ESTATE-BASIC)
-CREATE TABLE IF NOT EXISTS real_estate.listings_export (
-    property_id VARCHAR(50) PRIMARY KEY,
-    title TEXT NOT NULL,
+CREATE TABLE real_estate.listings_export (
+    website_name VARCHAR(50) DEFAULT 'idealista.pt',
+    competence_date DATE NOT NULL,
+    listing_id VARCHAR(50) PRIMARY KEY,
+    listing_title TEXT NOT NULL,
+    listing_description TEXT,
+    property_type VARCHAR(50),
+    listing_type VARCHAR(20) DEFAULT 'SALE',
+    reference_market VARCHAR(20) DEFAULT 'RESIDENTIAL',
+    country_code VARCHAR(3) DEFAULT 'PRT',
+    location_description TEXT,
+    location_region VARCHAR(100),
+    location_province VARCHAR(100),
+    location_city VARCHAR(100),
+    location_zip VARCHAR(20),
+    locaiton_neighborhood VARCHAR(100),
+    location_street VARCHAR(150),
+    location_street_n VARCHAR(20),
+    location_lon VARCHAR(50),
+    location_lat VARCHAR(50),
+    area_unit VARCHAR(10) DEFAULT 'SQMT',
+    area_value NUMERIC(12, 2),
+    bedrooms INT,
+    bathrooms INT,
+    floor INT,
+    total_floors INT,
+    amenities_list TEXT,
+    listing_date VARCHAR(20),
+    listing_status VARCHAR(50) DEFAULT 'Available',
+    agent_id VARCHAR(50),
+    agent_url TEXT,
+    currency_code VARCHAR(3) DEFAULT 'EUR',
     price NUMERIC(12, 2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'EUR',
-    typology VARCHAR(10),
-    area_m2 INT,
-    location TEXT NOT NULL,
-    url TEXT NOT NULL,
-    scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    imageurl TEXT,
+    itemurl TEXT NOT NULL
 );
-
--- 3. View para validação e exportação limpa
-CREATE OR REPLACE VIEW real_estate.v_real_estate_basic AS
-SELECT 
-    property_id,
-    title,
-    price,
-    currency,
-    typology,
-    area_m2,
-    location,
-    url,
-    TO_CHAR(scraped_at, 'YYYY-MM-DD HH24:MI:SS') AS scraped_at
-FROM real_estate.listings_export;
