@@ -1,0 +1,8 @@
+delivery_id;seller_id;contract_id;delivery_timestamp;message_type;m1;m2;m3;m4;m5
+1791218246.25593;AKIAS3CAQLRALQDSSYV2;recUat6mSQSsbwZzp;2026-10-05 16:37:41.677034;Date OK.;;;;;
+1791218246.25593;AKIAS3CAQLRALQDSSYV2;recUat6mSQSsbwZzp;2026-10-05 16:37:40.215308;Currency Code OK. Field (M1), Value (M2);currency_code;EUR;;;
+1791218246.25593;AKIAS3CAQLRALQDSSYV2;recUat6mSQSsbwZzp;2026-10-05 16:37:38.788751;Field VALID. Field (M1), Expected (M2), Actual (M3);country_code;PRT;PRT;;
+1791218246.25593;AKIAS3CAQLRALQDSSYV2;recUat6mSQSsbwZzp;2026-10-05 16:37:37.471036;Field REFUSED. Field (M1), Expected (M2), Actual (M3);website_name;Idealista;idealista.pt;;
+1791218246.25593;AKIAS3CAQLRALQDSSYV2;recUat6mSQSsbwZzp;2026-10-05 16:37:36.022892;Seller ID ok. Field (M1), Received (M3);seller_id;;AKIAS3CAQLRALQDSSYV2;;
+1791218246.25593;AKIAS3CAQLRALQDSSYV2;recUat6mSQSsbwZzp;2026-10-05 16:37:34.804517;Contract ID OK. Field (M1), Delivered (M3);contract_id;;recUat6mSQSsbwZzp;;
+1791218246.25593;AKIAS3CAQLRALQDSSYV2;recUat6mSQSsbwZzp;2026-10-05 16:37:33.38144;File loaded in staging area;;;;;
