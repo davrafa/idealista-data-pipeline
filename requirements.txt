@@ -14,3 +14,4 @@ soupsieve==2.9.2
 typing_extensions==4.16.0
 tzdata==2026.4
 urllib3==2.8.0
+python-dotenv==1.0.1

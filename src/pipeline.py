@@ -238,7 +238,7 @@ def export_to_delivery_file(output_file="data_file.txt"):
 
 if __name__ == "__main__":
     print("A iniciar pipeline local...")
-    html_data = get_html_content("pagina.html")
+    html_data = get_html_content()
     if html_data:
         data = parse_listings(html_data)
         if data:
